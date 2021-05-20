@@ -6,6 +6,8 @@
 #include <arpa/inet.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
+
 
 static struct timeval CLOCK_TV;
 
@@ -14,10 +16,11 @@ static struct timeval TIMER_TV = {1, 0};
 static void gettimeofday_cb(int nothing, short int which, void *ev)
 {
 	if (gettimeofday(&CLOCK_TV, NULL)) {
-		perror("gettimeofday()");
+		perror("");
 		event_loopbreak();
 	}
-
+//	fflush(stdout);
+//    printf("asdfasdfasd");
 	evtimer_add(ev, &TIMER_TV);
 }
 
@@ -36,7 +39,7 @@ static void udp_cb(const int sock, short int which, void *arg)
 	/* Copy the time into buf; note, endianess unspecified! */
 	memcpy(buf, &CLOCK_TV, sizeof(CLOCK_TV));
 
-	/* Send the data back to the client */
+	/* Send t lient */
 	if (sendto(sock, buf, sizeof(CLOCK_TV), 0, (struct sockaddr *) &server_sin, server_sz) == -1 ) {
 		perror("sendto()");
 		event_loopbreak();
@@ -54,7 +57,7 @@ int main(int argc, char **argv)
 	memset(&sin, 0, sizeof(sin));
 	sin.sin_family = AF_INET;
 	sin.sin_addr.s_addr = INADDR_ANY;
-	sin.sin_port = htons(1497);
+	sin.sin_port = htons(53);
 	
 	if (bind(sock, (struct sockaddr *) &sin, sizeof(sin))) {
 		perror("bind()");
@@ -74,6 +77,6 @@ int main(int argc, char **argv)
 
 	/* Enter the event loop; does not return. */
 	event_dispatch();
-	close(sock);
+    close(sock);
 	return 0;
 }
