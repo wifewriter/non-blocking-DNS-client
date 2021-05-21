@@ -1,5 +1,5 @@
 //
-// Created by root on 2021/5/20.
+// Created by yangyang on 2021/5/19.
 //
 #include <event2/dns.h>
 #include <event2/util.h>
@@ -22,8 +22,7 @@ int n_pending_requests = 0;
 struct event_base *base = NULL;
 
 struct user_data {
-    char *name; /* the name we're resolving */
-    int idx; /* its position on the command line */
+    char *name;
 };
 
 void callback(int errcode, struct evutil_addrinfo *addr, void *ptr)
@@ -31,14 +30,15 @@ void callback(int errcode, struct evutil_addrinfo *addr, void *ptr)
     struct user_data *data = static_cast<user_data *>(ptr);
     const char *name = data->name;
     if (errcode) {
-        printf("%d. %s -> %s\n", data->idx, name, evutil_gai_strerror(errcode));
+        printf("%d. %s -> %s\n" ,name, evutil_gai_strerror(errcode));
     } else {
         struct evutil_addrinfo *ai;
-        printf("%d. %s", data->idx, name);
+        printf("%s",name);
         if (addr->ai_canonname)
-            printf(" [%s]", addr->ai_canonname);
+            printf(" ===>%s", addr->ai_canonname);
         puts("");
-        for (ai = addr; ai; ai = ai->ai_next) {
+        int i =0;
+        for (ai = addr; ai; ai = ai->ai_next,i++) {
             char buf[128];
             const char *s = NULL;
             if (ai->ai_family == AF_INET) {
@@ -49,7 +49,7 @@ void callback(int errcode, struct evutil_addrinfo *addr, void *ptr)
                 s = evutil_inet_ntop(AF_INET6, &sin6->sin6_addr, buf, 128);
             }
             if (s)
-                printf("    -> %s\n", s);
+                printf("resolved_IP_%d:%s\n", i,s);
         }
         evutil_freeaddrinfo(addr);
     }
@@ -73,15 +73,11 @@ vector<string> splitstring(string &str,char *sp){
     }
     return r;
 }
+
 int main(int argc, char **argv)
 {
-    int i;
     struct evdns_base *dnsbase;
 
-//    if (argc == 1) {
-//        puts("No addresses given.");
-//        return 0;
-//    }
     base = event_base_new();
     if (!base)
         return 1;
@@ -93,42 +89,7 @@ int main(int argc, char **argv)
     vector<string> str_domain;
     str_domain = splitstring(tempstr,",");
 
-//    for (i = 1; i < argc; ++i) {
-//        struct evutil_addrinfo hints;
-//        struct evdns_getaddrinfo_request *req;
-//        struct user_data *user_data;
-//        memset(&hints, 0, sizeof(hints));
-//        hints.ai_family = AF_UNSPEC;
-//        hints.ai_flags = EVUTIL_AI_CANONNAME;
-//        /* Unless we specify a socktype, we'll get at least two entries for
-//         * each address: one for TCP and one for UDP. That's not what we
-//         * want. */
-//        hints.ai_socktype = SOCK_STREAM;
-//        hints.ai_protocol = IPPROTO_TCP;
-//        int user_data_len = sizeof(struct user_data);
-//
-////        if (!(user_data = malloc(sizeof(struct user_data)))) {
-//        if (!(user_data = static_cast<struct user_data *>(malloc(sizeof(struct user_data))))) {
-//            perror("malloc");
-//            exit(1);
-//        }
-//        if (!(user_data->name = strdup(argv[i]))) {
-//            perror("strdup");
-//            exit(1);
-//        }
-//        user_data->idx = i;
-//
-//        ++n_pending_requests;
-//        req = evdns_getaddrinfo(dnsbase, argv[i], NULL,&hints, callback, user_data);
-//        if (req == NULL) {
-//            printf("    [request for %s returned immediately]\n", argv[i]);
-//            /* No need to free user_data or decrement n_pending_requests; that
-//             * happened in the callback. */
-//        }
-//    }
     for (auto i = str_domain.begin() ; i !=str_domain.end(); ++i) {
-        int j = -1;
-        ++j;
         struct evutil_addrinfo hints;
         struct evdns_getaddrinfo_request *req;
         struct user_data *user_data;
@@ -137,7 +98,6 @@ int main(int argc, char **argv)
         hints.ai_flags = EVUTIL_AI_CANONNAME;
         hints.ai_socktype = SOCK_STREAM;
         hints.ai_protocol = IPPROTO_TCP;
-        int user_data_len = sizeof(struct user_data);
 
         if (!(user_data = static_cast<struct user_data *>(malloc(sizeof(struct user_data))))) {
             perror("malloc");
@@ -148,8 +108,6 @@ int main(int argc, char **argv)
             perror("strdup");
             exit(1);
         }
-        user_data->idx = j;
-
         ++n_pending_requests;
         req = evdns_getaddrinfo(dnsbase, str_uname.c_str(), NULL,&hints, callback, user_data);
         if (req == NULL) {
